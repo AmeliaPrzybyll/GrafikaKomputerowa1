@@ -1,0 +1,145 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+width="7in" height="7in"
+viewBox="0 0 700 700"
+preserveAspectRatio="xMidYMid">
+
+  <script type="text/ecmascript">
+    <![CDATA[
+      var x1 = 60;
+      var y1 = 120;
+    var x2=250;
+    var y2=175;
+
+    var x3=270;
+    var y3=320;
+    
+    var x4=440;
+    var y4=380;
+
+    var x5=460;
+    var y5=90;
+
+    var x6=640;
+    var y6=140;
+    S
+      function drawNonagon(cx, cy, size) {
+        var points = "";
+        for (var i = 0; i < 9; i++) {
+          var angle = (360 / 9) * i;
+          var x = cx + size * Math.cos(angle * Math.PI / 180);
+          var y = cy + size * Math.sin(angle * Math.PI / 180);
+          points += x + "," + y + " ";
+        }
+        return points;
+      }
+    ]]>
+  </script>
+
+  <!--Prostokąty:-->
+  <g>
+    <rect x="220" y="500" width="15" height="200" fill="red" transform="rotate(110, 350, 350)"/>
+  </g>
+  <g>
+    <rect x="55" y="150" width="13" height="180" fill="red" transform="rotate(110, 350, 350)"/>
+  </g>
+  <g>
+    <rect x="345" y="245" width="16" height="200" fill="red" transform="rotate(110, 350, 350)"/>
+  </g>
+
+  <!--Trójkąty:-->
+  <polygon points="150,140 125,260 175,260" fill="purple"/>
+  <polygon points="350,350 300,550 400,550" fill="blue"/>
+  <polygon points="550,110 530,200 570,200" fill="green"/>
+  
+  <!--Pierwszy dziewięciokąt:-->
+  <polygon points="x1,y1"
+           fill="none"
+           stroke="black"
+           id="nonagon1"
+           onclick="alert('Nonagon 1 clicked!')">
+    <set attributeName="points" to=""/> 
+    <animateTransform attributeName="transform" attributeType="XML" type="rotate" 
+                      from="0 60 120" to="360 60 120" dur="5s" repeatCount="indefinite" />
+  </polygon>
+
+  <!--Drugi dziewięciokąt:-->
+  <polygon points="x2,y2"
+           fill="none"
+           stroke="black"
+           id="nonagon2"
+           onclick="alert('Nonagon 2 clicked!')">
+    <set attributeName="points" to=""/>
+    <animateTransform attributeName="transform" attributeType="XML" type="rotate" 
+                      from="0 250 175" to="360 250 175" dur="5s" repeatCount="indefinite" />
+  </polygon>
+
+   <!--Trzeci dziewięciokąt:-->
+   <polygon points="x3,y3"
+   fill="none"
+   stroke="black"
+   id="nonagon3"
+   onclick="alert('Nonagon 3 clicked!')">
+<set attributeName="points" to=""/>
+<animateTransform attributeName="transform" attributeType="XML" type="rotate" 
+              from="0 270 320" to="360 270 320" dur="5s" repeatCount="indefinite" />
+</polygon>
+
+<!--Czwarty dziewięciokąt:-->
+<polygon points="x4,y4"
+fill="none"
+stroke="black"
+id="nonagon4"
+onclick="alert('Nonagon 4 clicked!')">
+<set attributeName="points" to=""/>
+<animateTransform attributeName="transform" attributeType="XML" type="rotate" 
+           from="0 440 380" to="360 440 380" dur="5s" repeatCount="indefinite" />
+</polygon>
+
+<!--Piąty dziewięciokąt:-->
+<polygon points="x5,y5"
+fill="none"
+stroke="black"
+id="nonagon5"
+onclick="alert('Nonagon 5 clicked!')">
+<set attributeName="points" to=""/>
+<animateTransform attributeName="transform" attributeType="XML" type="rotate" 
+           from="0 460 90" to="360 460 90" dur="5s" repeatCount="indefinite" />
+</polygon>
+
+<!--Szósty dziewięciokąt:-->
+<polygon points="x6,y6"
+fill="none"
+stroke="black"
+id="nonagon6"
+onclick="alert('Nonagon 6 clicked!')">
+<set attributeName="points" to=""/>
+<animateTransform attributeName="transform" attributeType="XML" type="rotate" 
+           from="0 640 140" to="360 640 140" dur="5s" repeatCount="indefinite" />
+</polygon>
+
+  <script type="text/ecmascript">
+    <![CDATA[
+      // Funkcja rysująca dziewięciokąt w określonym miejscu
+      var nonagon1 = document.getElementById('nonagon1');
+      nonagon1.setAttribute('points', drawNonagon(x1,y1, 30));
+       
+      var nonagon2 = document.getElementById('nonagon2');
+      nonagon2.setAttribute('points', drawNonagon(x2, y2, 30)); // Zmiana położenia i rozmiaru drugiego dziewięciokąta
+        
+      var nonagon3 = document.getElementById('nonagon3');
+      nonagon3.setAttribute('points', drawNonagon(x3, y3, 30)); // Zmiana położenia i rozmiaru drugiego dziewięciokąta
+        
+      var nonagon4 = document.getElementById('nonagon4');
+      nonagon4.setAttribute('points', drawNonagon(x4, y4, 30)); // Zmiana położenia i rozmiaru drugiego dziewięciokąta
+        
+      var nonagon5 = document.getElementById('nonagon5');
+      nonagon5.setAttribute('points', drawNonagon(x5, y5, 30)); // Zmiana położenia i rozmiaru drugiego dziewięciokąta
+        
+      var nonagon6 = document.getElementById('nonagon6');
+      nonagon6.setAttribute('points', drawNonagon(x6, y6, 30)); // Zmiana położenia i rozmiaru drugiego dziewięciokąta
+        
+      ]]>
+  </script>
+
+</svg>
