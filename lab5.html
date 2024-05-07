@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+ Użyj OpenGL i GLUT do narysowania prostej kostki,
+  gdzie każda ściana ma inny kolor. Obrót
+  można zastosować za pomocą strzałek, klawisza Page Up
+  i klawisza Page Down. Klawisz Home ustawia
+  wszystkie obroty na 0. Początkowe obroty wokół
+  osi x, y i z to 15, -15 i 0.
+
+  Ten program ma służyć jako przykład użycia transformacji
+  modelowania, z glPushMatrix i glPopMatrix.
+ 
+  Należy zauważyć, że ten program nie używa oświetlenia.
+-->
+
+<head>
+<meta charset="UTF-8">
+<title>Zadanie 5</title>
+
+<!-- Załaduj kod symulacji OpenGL 1.1 -->
+<script src="glsim.js"></script>  
+
+<script>
+
+    let rotationX = 15;   
+    let rotationY = -15;
+    let rotationZ = 0;
+    let selectedObject = 1;
+    
+
+    function drawSpiral(turns, radius, height, color) {
+    let points = 360; 
+    let angleIncrement = (2 * Math.PI) / points; 
+    let heightIncrement = height / (points * turns); 
+    let currentHeight = -height / 2; 
+    let startSize = 0.01; 
+    let endSize = 0.001; 
+    let sizeIncrement = (startSize - endSize) / (points * turns); 
+
+    glColor3f(color.r, color.g, color.b); 
+
+    for (let i = 0; i <= points * turns; i++) {  
+        let angle = i * angleIncrement; 
+        let x = radius * Math.cos(angle);
+        let y = radius * Math.sin(angle);
+        let currentSize = startSize - sizeIncrement * i; 
+
+        glPushMatrix(); 
+        glTranslatef(x, y, currentHeight); 
+        glScalef(currentSize, currentSize, currentSize); 
+
+        glBegin(GL_QUADS);
+        glVertex3f(-0.5, -0.5, 0);
+        glVertex3f(0.5, -0.5, 0); 
+        glVertex3f(0.5, 0.5, 0);
+        glVertex3f(-0.5, 0.5, 0);
+        glEnd();
+
+        glPopMatrix(); 
+
+        currentHeight += heightIncrement; 
+    }
+}
+
+
+function drawPyramid(baseVertices, height, color) {
+        let anglePoint = (2 * Math.PI) / baseVertices;
+        let radius = 0.5; 
+
+        glColor3f(color.r, color.g, color.b);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(0, 0, 0); 
+        for (let i = 0; i <= baseVertices; i++) {
+            let angle = i * anglePoint; 
+            let x = radius * Math.cos(angle); 
+            let y = radius * Math.sin(angle);
+            glVertex3f(x, y, 0); 
+        }
+        glEnd();
+
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(0, 0, height); 
+        for (let i = 0; i <= baseVertices; i++) {
+            let angle = i * anglePoint;
+            let x = radius * Math.cos(angle); 
+            let y = radius * Math.sin(angle);
+            glVertex3f(x, y, 0); 
+        }
+        glEnd();
+    }
+
+  
+    
+    // ----------------------------------------------------------------------
+
+    function display() {  
+
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     
+        glLoadIdentity();             
+        glRotatef(rotationZ,0,0,1);
+        glRotatef(rotationY,0,1,0);
+        glRotatef(rotationX,1,0,0);
+        if (selectedObject == 1) {
+            drawSpiral(8, 0.2, 1, {r: 0, g: 255, b: 0});   
+        } else if (selectedObject == 2) {
+            drawPyramid(9, 1, {r: 0, g: 255, b: 0}); 
+        }
+
+        
+    }
+    
+    function initGL() {
+        glMatrixMode(GL_PROJECTION);
+        glOrtho(-1, 1, -1, 1, -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glEnable(GL_DEPTH_TEST);
+        glClearColor(0, 0, 0, 1);
+    }
+    
+    function handleKeyDown(evt) {
+        let key = evt.keyCode;
+        if ( key == 37 ) 
+           rotationY -= 15;
+        else if ( key == 39 ) 
+           rotationY += 15;
+        else if ( key == 40) 
+           rotationX += 15;
+        else if ( key == 38 ) 
+           rotationX -= 15;
+        else if ( key == 33 ) 
+           rotationZ += 15;
+        else if ( key == 34 ) 
+           rotationZ -= 15;
+        else if ( key == 49 ) 
+            selectedObject = 1;
+        else if ( key == 50 ) 
+            selectedObject = 2;
+        else if ( key == 36 )  
+           rotationX = rotationY = rotationZ = 0;
+        if (key >=34 && key <= 50) {
+            evt.preventDefault();
+        }
+        display();
+    }
+    
+    function init() {  
+        try {
+            glsimUse("glcanvas"); 
+        }
+        catch (e) {
+            document.getElementById("canvas-holder").innerHTML =
+                "Przepraszamy, wystąpił błąd:<br>" + e;
+            return;
+        }
+        document.onkeydown = handleKeyDown;
+        initGL();
+        display();
+    }
+
+</script>
+
+</head>
+
+<body onload="init()">
+
+<h3>Zadanie 5</h3>
+
+<p>(Obracanie za pomocą strzałek, Page Up, Page Down i klawisza Home.)</p>
+
+<noscript>
+<p><b>Przepraszamy, ta strona wymaga włączonego JavaScript!</b></p>
+</noscript>
+
+<div id="canvas-holder">
+<canvas id="glcanvas" width="500" height="500"></canvas>
+</div>
+
+</body>
+</html>
