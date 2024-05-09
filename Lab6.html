@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<!--
+ *  Pokazuje scenę (czajnik na krótkiej cylindrycznej podstawie), którą oświetlają
+ *  maksymalnie cztery światła plus globalne światło otaczające. Użytkownik może
+ *  włączać i wyłączać światła. Globalne światło otaczające jest słabym światłem białym.
+ *  Istnieje białe "światło punktu widzenia", które skierowane jest z kierunku widza
+ *  w stronę sceny. Istnieje czerwone, niebieskie i zielone światło
+ *  obracające się wokół czajnika w kółkach. (Użytkownik może włączać i wyłączać animację).
+ *  Lokalizacje kolorowych świateł są oznaczone przez kule,
+ *  które są szare, gdy światło jest wyłączone, i kolorowane kolorem emisyjnym,
+ *  gdy światło jest włączone. Czajnik jest szary z słabymi punktowymi refleksami.
+ *  Podstawa jest pokolorowana w spektrum. (Użytkownik może włączać i wyłączać wyświetlanie
+ *  podstawy.) Mysz można użyć do obracania sceny.
+-->
+<head>
+<meta charset="UTF-8">
+<title>Cztery Światła</title>
+<link rel="stylesheet" href="../demo.css">
+<script src="../script/demo-core.js"></script>
+<script src="../script/glsim.js"></script>
+<script src="../script/teapot-model-IFS.js"></script>
+<script>
+
+var camera;
+
+var animate;       // pole wyboru, które kontroluje animację
+var drawBase;      // pole wyboru do włączania i wyłączania wyświetlania podstawy
+var ambientLight;  // pole wyboru do włączania i wyłączania globalnego światła otaczającego
+var viewpointLight, redLight, blueLight, greenLight;  // pola wyboru do włączania i wyłączania świateł
+
+var animating = false;  // określa, czy animacja jest uruchomiona
+var frameNumber = 0;  // numer klatki do użytku w animacji
+
+//------------------- Funkcje rysujące ----------------------------------------
+
+/* Rysuje sferę. */
+function uvSphere(radius, slices, stacks) {
+    var i,j;
+    for (j = 0; j < stacks; j++) {
+        var latitude1 = (Math.PI/stacks) * j - Math.PI/2;
+        var latitude2 = (Math.PI/stacks) * (j+1) - Math.PI/2;
+        var sinLat1 = Math.sin(latitude1);
+        var cosLat1 = Math.cos(latitude1);
+        var sinLat2 = Math.sin(latitude2);
+        var cosLat2 = Math.cos(latitude2);
+        glBegin(GL_TRIANGLE_STRIP);
+        for (i = 0; i <= slices; i++) {
+            var longitude = (2*Math.PI/slices) * i;
+            var sinLong = Math.sin(longitude);
+            var cosLong = Math.cos(longitude);
+            var x1 = cosLong * cosLat1;
+            var y1 = sinLong * cosLat1;
+            var z1 = sinLat1;
+            var x2 = cosLong * cosLat2;
+            var y2 = sinLong * cosLat2;
+            var z2 = sinLat2;
+            glNormal3d(x2,y2,z2);
+	    glVertex3d(radius*x2,radius*y2,radius*z2);
+	    glNormal3d(x1,y1,z1);
+            glVertex3d(radius*x1,radius*y1,radius*z1);
+        }
+        glEnd();
+    }
+} // koniec uvSphere
+
+/* Ustawia pozycje świateł kolorowych i włącza je lub wyłącza w zależności od
+ * stanu opcji redLight, greenLight i blueLight. Rysuje małą
+ * sferę w miejscu każdego światła.
+ */
+function lights() {
+
+    glColor3d(0.5,0.5,0.5);
+    var zero = [ 0, 0, 0, 1 ];
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, zero);
+    
+    if (viewpointLight.checked)
+        glEnable(GL_LIGHT0);
+    else
+        glDisable(GL_LIGHT0);
+    
+    if (redLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0.5, 0, 0, 1]);  
+        glEnable(GL_LIGHT1);
+    }
+    else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);  
+        glDisable(GL_LIGHT1);
+    }
+    glPushMatrix();
+    glRotated(-frameNumber, 0, 1, 0);
+    glTranslated(10, 7, 0);
+    glLightfv(GL_LIGHT1, GL_POSITION, zero);
+    uvSphere(0.5, 16, 8);
+    glPopMatrix();
+    
+    if (greenLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0, 0.5, 0, 1]); 
+        glEnable(GL_LIGHT2);
+    }
+    else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); 
+        glDisable(GL_LIGHT2);
+    }
+    glPushMatrix();
+    glRotated((frameNumber+100)*0.8743, 0, 1, 0);
+    glTranslated(9, 8, 0);
+    glLightfv(GL_LIGHT2, GL_POSITION, zero);
+    uvSphere(0.5, 16, 8);
+    glPopMatrix();
+    
+    if (blueLight.checked) {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, [0, 0, 0.5, 1]); 
+        glEnable(GL_LIGHT3);
+    }
+    else {
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero);
+        glDisable(GL_LIGHT3);
+    }
+    glPushMatrix();
+    glRotated((frameNumber-100)*1.3057, 0, 1, 0);
+    glTranslated(9.5, 7.5, 0);
+    glLightfv(GL_LIGHT3, GL_POSITION, zero);
+    uvSphere(0.5, 16, 8);
+    glPopMatrix();
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); // Wyłącz kolor emisyjny!
+} // koniec lights()
+
+
+/*  Wypełnia tablicę z komponentami koloru RGBA odpowiadającymi danym komponentom koloru HSV, 
+ *  gdzie h, s i v są w zakresie od 0.0 do 1.0.
+ */
+function colorArrayForHue(h, s, v) {
+    var r,g,b;
+    var c,x;
+    h = h*359;
+    c = v*s;
+    x = (h < 120)? h/60 : (h < 240)? (h-120)/60 : (h-240)/60;
+    x = c * (1-Math.abs(x-1));
+    x += (v-c);
+    switch (Math.floor(h/60)) {
+        case 0: r = v; g = x; b = v-c; break;
+        case 1: r = x; g = v; b = v-c; break;
+        case 2: r = v-c; g = v; b = x; break;
+        case 3: r = v-c; g = x; b = v; break;
+        case 4: r = x; g = v-c; b = v; break;
+        case 5: r = v; g = v-c; b = x; break;
+    }
+    var array = new Array(4);
+    array[0] = r;
+    array[1] = g;
+    array[2] = b;
+    array[3] = 1;
+    return array;
+}
+
+/* Rysuje stożek o podstawie baseVertices, wysokości i kolorze color */
+function drawPyramid(baseVertices, height, color) {
+    let anglePoint = (2 * Math.PI) / baseVertices;
+    let radius = 6; 
+
+    glColor3f(color.r, color.g, color.b);
+    glBegin(GL_TRIANGLE_FAN);
+    
+    glVertex3f(0, 0, height); // Wierzchołek piramidy
+    for (let i = 0; i <= baseVertices; i++) {
+        let angle = i * anglePoint; 
+        let x = radius * Math.cos(angle); 
+        let y = radius * Math.sin(angle);
+        glVertex3f(x, y, 0); // Podstawa piramidy
+    }
+    glRotated(270,1,0,0);
+    glEnd();
+}
+function drawBase(gl, n, r) {
+    gl.beginPath(); // Rozpocznij rysowanie wielokąta
+    for (let i = 0; i <= n; i++) {
+        let x = r * Math.cos(2 * i * Math.PI / n);
+        let z = r * Math.sin(2 * i * Math.PI / n);
+        let y = 1;
+        // Ustaw kolor wypełnienia
+        gl.fillStyle = 'rgba(255, 0, 0, 1)'; // Czerwony kolor
+        // Narysuj punkt wielokąta
+        gl.lineTo(x, y, z); // Dodaj punkt do wielokąta
+    }
+    gl.closePath(); // Zamknij wielokąt
+    gl.fill(); // Wypełnij wielokąt
+}
+// Pobierz element canvas
+var canvas = document.getElementById('myCanvas');
+var ctx = canvas.getContext('2d');
+
+function drawCylinder() {
+    var i;
+    var rgba;
+    glBegin(GL_TRIANGLE_STRIP);
+    for (i = 0; i <= 64; i++) {
+        var angle = 2*Math.PI/64 * i;
+        var x = Math.cos(angle);
+        var y = Math.sin(angle);
+        rgba = colorArrayForHue(i/64.0, 1, 0.6);
+        glColor3dv(rgba);
+        glNormal3d( x, y, 0 );  // Normal for both vertices at this angle.
+        glVertex3d( x, y, 1 );  // Vertex on the top edge.
+        glVertex3d( x, y, -1 ); // Vertex on the bottom edge.
+    }
+    //glRotated(90,0,1,0);
+    glEnd();
+    glNormal3d( 0, 0, 1 );
+    glBegin(GL_TRIANGLE_FAN);  // Draw the top, in the plane z = 1.
+    glColor3d(1,1,1);  // ambient and diffuse for center
+    glVertex3d( 0, 0, 1);
+    for (i = 0; i <= 64; i++) {
+        var angle = 2*Math.PI/64 * i;
+        var x = Math.cos(angle);
+        var y = Math.sin(angle);
+        rgba = colorArrayForHue(i/64.0, 1, 0.6);
+        glColor3dv(rgba);
+        glVertex3d( x, y, 1 );
+    }
+    //glRotated(90,0,1,0);
+    glEnd();
+    glNormal3f( 0, 0, -1 );  
+    glBegin(GL_TRIANGLE_FAN);  // Draw the bottom, in the plane z = -1
+    glColor3d(1,1,1);  // ambient and diffuse for center
+    glVertex3d( 0, 0, -1);
+    for (i = 64; i >= 0; i--) {
+        var angle = 2*Math.PI/64 * i;
+        var x = Math.cos(angle);
+        var y = Math.sin(angle);
+        rgba = colorArrayForHue(i/64.0, 1, 0.6);
+        glColor3dv(rgba);
+        glVertex3d( x, y, -1 );  
+    }
+    //glRotated(90,0,1,0);//pokrywka
+    glEnd();    
+}
+
+/* Wyświetla scenę.
+ */
+ function display() {
+
+glClearColor(0,0,0,1);
+glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ); 
+
+camera.apply();
+
+lights();
+
+if (ambientLight.checked) {
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.15, 0.15, 0.15, 1] );
+}
+else {
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0, 0, 0, 1] );
+}
+
+if (drawBase.checked) {
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0, 0, 0, 1] );
+
+    glPushMatrix();
+    glTranslated(0, -5, 0);
+    glRotated(-90, 1, 0, 0);
+    glScaled(10,10,0.5);
+   drawCylinder();
+    glPopMatrix();
+}
+
+glColor3d(0.7,0.7,0.7);  
+
+glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0, 0, 0, 1]);
+
+glPushMatrix();
+glTranslatef(0,-5,0);
+glScalef(0.65,0.65,0.65);
+// Rysuj piramidę zamiast czajnika
+drawPyramid(9, 10, {r: 0, g: 255, b: 0});
+glPopMatrix();
+}
+
+/* Inicjalizacja, w tym ustawienie kamery i konfiguracja czterech świateł.
+ */
+function initGL() {
+    glClearColor(0, 0, 0, 1);  
+    glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_NORMALIZE);
+    glEnable(GL_COLOR_MATERIAL);
+    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 1);
+    glMateriali(GL_FRONT_AND_BACK, GL_SHININESS, 32);
+
+    var dim = [ 0.5, 0.5, 0.5, 1 ];
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, dim);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, dim);
+
+    var red =  [ 0.5, 0, 0, 1];
+    var reda = [ 0.1, 0, 0, 1];
+    glLightfv(GL_LIGHT1, GL_AMBIENT, reda);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, red);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, red);
+
+    var gr = [ 0, 0.5, 0, 1 ];
+    var gra = [ 0, 0.1, 0, 1 ];
+    glLightfv(GL_LIGHT2, GL_AMBIENT, gra);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, gr);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, gr);
+
+    var bl = [0, 0, 0.5, 1];
+    var bla = [0, 0, 0.1, 1];
+    glLightfv(GL_LIGHT3, GL_AMBIENT, bla);
+    glLightfv(GL_LIGHT3, GL_DIFFUSE, bl);
+    glLightfv(GL_LIGHT3, GL_SPECULAR, bl);
+}
+
+/* Funkcja animacji, wywoływana co 30 milisekund, jeśli animacja jest uruchomiona */
+function doFrame() {
+    if (animating) {
+	frameNumber++;
+	display();
+	setTimeout(doFrame, 30);
+    }
+}
+
+function init() {
+    try {
+        glsimUse("maincanvas");
+    }
+    catch (e) {
+        document.getElementById("canvas-holder").innerHTML="<p><b>Sorry, an error occurred:<br>" +
+                e + "</b></p>";
+	return;
+    }
+    animate = document.getElementById("animate");
+    drawBase = document.getElementById("drawBase");
+    ambientLight = document.getElementById("ambientLight");
+    viewpointLight = document.getElementById("viewpointLight");
+    redLight = document.getElementById("redLight");
+    blueLight = document.getElementById("blueLight");
+    greenLight = document.getElementById("greenLight");
+    animate.checked = false;
+    drawBase.checked = true;
+    ambientLight.checked = true;
+    viewpointLight.checked = true;
+    redLight.checked = true;
+    greenLight.checked = true;
+    blueLight.checked = true;
+    drawBase.onchange = display;
+    ambientLight.onchange = display;
+    viewpointLight.onchange = display;
+    redLight.onchange = display;
+    blueLight.onchange = display;
+    greenLight.onchange = display;
+    animate.onchange = function() {
+	if (animate.checked) {
+	    animating = true;
+	    doFrame();
+	}
+	else {
+	    animating = false;
+	}
+    }
+    initGL();
+    camera = new Camera();
+    camera.lookAt(5,10,30, 0,0,0, 0,1,0);
+    camera.setScale(15);
+    camera.installTrackball(display);
+    display();
+}
+
+</script>
+</head>
+<body onload="init()">
+
+<div id="content">
+
+<h3 id="headline">Demo Czterech Świateł</h3>
+
+<div id="canvas-holder">
+<canvas id="maincanvas" width="400" height="400"></canvas>
+</div>
+
+<div id="tools">
+<p>
+<label><input type="checkbox" id="animate">Animacja</label><br><br>
+<label><input type="checkbox" id="drawBase">Rysuj Podstawę</label><br><br>
+<label><input type="checkbox" id="ambientLight">Globalne Światło Otaczające</label><br><br>
+<label><input type="checkbox" id="viewpointLight">Światło Punktu Widzenia</label><br>
+<label><input type="checkbox" id="redLight">Czerwone Światło</label><br>
+<label><input type="checkbox" id="greenLight">Zielone Światło</label><br>
+<label><input type="checkbox" id="blueLight">Niebieskie Światło</label><br>
+
+
+</p>
+</div>
+
+</div>
+
+
+
+<div id="help-content" style="display:none">
+<h3>O tym demo...</h3>
+<p>Demo pokazuje scenę oświetloną przez cztery źródła światła oraz przez słabe globalne światło otaczające.
+ Istnieje "światło punktu widzenia", które jest białym światłem świecącym w scenę z kierunku widza.
+ Istnieją trzy kolorowe światła pozycyjne, z małą kulą w miejscu każdego światła.
+ Pola wyboru pozwalają na wyłączanie i włączanie świateł.
+ Możesz kontrolować wyświetlanie podstawy.
+ Możesz włączyć animację, która sprawia, że kolorowe światła krążą
+ wokół czajnika. Możesz również obracać scenę jako całość
+ używając myszy.</p>
+<p>Kilka rzeczy do zrobienia: Wyłącz wszystkie światła oprócz jednego i zauważ
+ efekt tego światła na czajniku. (Może wyłącz podstawę, aby nie przeszkadzała.)
+ Dla kolorowych świateł, upewnij się, że używasz animacji, aby zobaczyć,
+ jak zmieniają się kolory na czajniku. Spróbuj tego
+ z włączonym tylko dwoma kolorowymi światłami i zobacz, jak ich kolory się łączą.
+ Zauważ, że gdy jedno kolorowe światło jest włączone, dodaje trochę swojego
+ koloru do światła otoczenia; aby zobaczyć efekt, spojrzyj na dół
+ czajnika, z tylko jednym włączonym światłem (i wyłączonym wyświetlaniem podstawy).</p>
+ <i>glMaterialfv</i>.</p>
+</div>
+
+
+
+<!-- support for help text -- do not change. -->
+<div id="help-icon">
+<img src="../image/question32.png" onclick="showDemoHelp()"
+    title="Click here for information about this demo." width="32" height="32">
+</div>
+<div id="hide-help-icon">
+<img src="../image/close32.png" onclick="showDemoHelp()"
+    title="Click here to return to the demo." width="65" height="32">
+</div>
+<div id="helpBG" style="display:none"></div>
+</body>
+</html>
